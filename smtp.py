@@ -1,7 +1,8 @@
 from secure_smtpd import SMTPServer
-from email import Parser
+from subprocess import Popen, PIPE, STDOUT
 from requests import post
-from json import dumps
+from httplib import HTTPSConnection
+import json
 		
 class authSMTP():
 
@@ -20,23 +21,24 @@ class authSMTP():
 
 	class server(SMTPServer):
 		def process_message(self, peer, mailfrom, rcpttos, message_data):
-
-			# parse the email into an object
-			message_data = Parser.Parser().parsestr(message_data)
+			p = Popen(['python', 'mailtojson.py', '-p'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+			mailtojson_stdout = p.communicate(input=message_data)[0]
+			#print(mailtojson_stdout.decode())
+			mailtojson_stdout = json.loads(mailtojson_stdout.decode())
+			mailtojson_stdout['_peer'] = peer;
+			mailtojson_stdout['_mailfrom'] = mailfrom;
+			mailtojson_stdout['_rcpttos'] = rcpttos;
+			mailtojson_stdout['_smtpuser'] = authSMTP.username;
+			mailtojson_stdout['_smtppass'] = authSMTP.password;
 			
-			# check if the message is multipart (has attachments)
-			is_multipart = message_data.is_multipart()
+			conn = HTTPSConnection("www.sendsecure.org")
+			headers = { "charset" : "utf-8", "Content-Type": "application/json", "User-Agent": "SendSecure/MailEncode 1.0" }
+			postJson = json.dumps(mailtojson_stdout, ensure_ascii = False)
+			conn.request("POST", "/smtp_post.php", postJson.encode('utf-8'), headers)
+			response = conn.getresponse()
+			print(response.read())
+			conn.close()
 
-			# in-place convert the message_data object to json
-			message_data = dumps(message_data, default=lambda o: o.__dict__, ensure_ascii=False)
-
-			post("https://www.sendsecure.org/smtp_post.php", data = {	'peer':peer,
-																		'mailfrom':mailfrom,
-																		'rcpttos':rcpttos,
-																		'username':authSMTP.username,
-																		'password':authSMTP.password,
-																		'is_multipart':is_multipart,
-																		'message_data':message_data})
 
 authSmtpServer = authSMTP.server(
 	('127.0.0.1', 2525),
