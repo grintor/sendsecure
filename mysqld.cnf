@@ -1,0 +1,6 @@
+# /etc/mysql/mysql.conf.d/mysqld.cnf
+# sudo /etc/init.d/mysql restart
+
+
+[mysqld]
+max_allowed_packet = 35M
