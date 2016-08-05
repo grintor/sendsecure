@@ -8,13 +8,15 @@
 			<p><span class = 'vars'>From:</span><span>{$from}</span></p>
 			<p><span class = 'vars'>Date:</span><span>{$date}</span></p>
 			<p><span class = 'vars'>To:</span><span>{$to}</span></p>
+			{$replyTo}
+			{$cc}
 			{$attachments}
 			<p class='options'><span class = 'vars'>Options:</span><span>
 				<a href="#" onclick="window.print();">Print this page</a> | 
 				<a href="#" onclick="window.print();">View Message Details</a> | 
 				<a href="#" onclick="window.print();">Forward</a> | 
-				<a href="#" onclick="window.print();">Reply</a> | 
-				<a href="#" onclick="window.print();">Reply to all</a>
+				<a href="reply.php?id={$id}&key={$key}&index={$index}&reply=one" >Reply</a> | 
+				<a href="reply.php?id={$id}&key={$key}&index={$index}&reply=all" >Reply To All</a>
 			</span></p>
 		</div>
 		<div class = 'mailBody'>
