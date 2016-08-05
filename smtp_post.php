@@ -4,12 +4,30 @@ require_once('./sqliConnect.php');
 
 $message_data = json_decode(file_get_contents('php://input'), true);
 
-file_put_contents("message_data_str.txt", print_r($message_data, true));
+//file_put_contents("message_data_str.txt", print_r($message_data, true));
 
-$uniqid = uniqid('', true);
+$uniqid = uniqid('', true);		// this is also the salt (or iv)
+$key = hash('sha256', openssl_random_pseudo_bytes(256));
+
 
 $sqlRequest = sprintf(
-		"INSERT INTO emails VALUES (UTC_TIMESTAMP, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
+		"INSERT INTO emails VALUES (
+		UTC_TIMESTAMP,
+		'%s',
+		'%s',
+		'%s',
+		'%s',
+		'%s',
+		'%s',
+		'%s',
+		'%s',
+		'%s',
+		'%s',
+		'%s',
+		'%s',
+		AES_ENCRYPT(compress('%s'), UNHEX('$key'), '$uniqid'),
+		AES_ENCRYPT(compress('%s'), UNHEX('$key'), '$uniqid'),
+		'%s')",
 		mysqli_real_escape_string($mysqli, $message_data['_smtpuser']),
 		mysqli_real_escape_string($mysqli, $message_data['_mailfrom']),
 		mysqli_real_escape_string($mysqli, json_encode($message_data['_rcpttos'])),
@@ -28,19 +46,22 @@ $sqlRequest = sprintf(
 	);
 
 if (!$sqlResult = $mysqli->query($sqlRequest)) {
-    echo 'DB query failed';
+    print 'DB query failed';
+	print ': ' . $mysqli->error;
+	print 'query: ' . $sqlRequest;
     exit;
 }
 
 print 'mail posted';
 
+$index = 0;
 foreach($message_data['_rcpttos'] as $rcptto) {
 	$headers = 'From: "' . $message_data['from'][0]['name'] . '" <do-not-reply@sendsecure.org>';
 	$subject = '[SECURE] ' . $message_data['subject'];
 	$message = 'You have a secure message. Click here to read it' . "\r\n" .
-	'https://www.sendsecure.org/read.php?id=' . $uniqid;
+	'https://www.sendsecure.org/read.php?id=' . $uniqid . '&key=' . $key . '&index=' . $index;
 	mail($rcptto, $subject, $message, $headers);
-	
+	$index++;
 }
 
 
