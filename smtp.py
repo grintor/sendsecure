@@ -1,7 +1,9 @@
-from secure_smtpd import SMTPServer
+import sys
+sys.path.append('/opt/sendsecure/secure-smtpd-3.0.0')
+from secure_smtpd import SMTPServer, FakeCredentialValidator	# this is imported from above
 from subprocess import Popen, PIPE, STDOUT
 from requests import post
-from httplib import HTTPSConnection
+from http.client import HTTPSConnection
 import json
 		
 class authSMTP():
@@ -22,7 +24,7 @@ class authSMTP():
 	class server(SMTPServer):
 		def process_message(self, peer, mailfrom, rcpttos, message_data):
 			p = Popen(['python', 'mailtojson.py', '-p'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-			mailtojson_stdout = p.communicate(input=message_data)[0]
+			mailtojson_stdout = p.communicate(input=bytes(message_data, 'UTF-8'))[0]
 			#print(mailtojson_stdout.decode())
 			mailtojson_stdout = json.loads(mailtojson_stdout.decode())
 			mailtojson_stdout['_peer'] = peer;
@@ -44,6 +46,7 @@ authSmtpServer = authSMTP.server(
 	('127.0.0.1', 2525),
 	None,
 	require_authentication=True,
+	data_size_limit=35650000,
 	ssl=False,
 	credential_validator=authSMTP.credentialManager(),
 	)
